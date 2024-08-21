@@ -37,6 +37,17 @@ function PlaylistSection() {
         console.error('Error fetching songs:', error);
       }
     };
+    const fetchPlaylist = async()=>{
+      try {
+        const response = await axios.get('https://music-player-backend-theta.vercel.app/api/playlists');
+        //console.log(response.data);
+        setPlaylists(response.data);
+      } catch (error) {
+        console.error('Error fetching songs:', error);
+      }
+    };
+
+    fetchPlaylist();
     fetchSongs();
   }, []);
 
@@ -199,7 +210,7 @@ function PlaylistSection() {
 
       {/* Playlist List */}
       <Box sx={{ marginTop: '16px' }}>
-        <Typography variant="body1">Playlists:</Typography>
+        <Typography variant="body1">Playlistss:</Typography>
         <List className="playlist-list">
           {playlists.map((playlist, index) => (
             <ListItem
