@@ -210,7 +210,7 @@ function PlaylistSection() {
 
       {/* Playlist List */}
       <Box sx={{ marginTop: '16px' }}>
-        <Typography variant="body1">Playlistss:</Typography>
+        <Typography variant="body1">Playlists:</Typography>
         <List className="playlist-list">
           {playlists.map((playlist, index) => (
             <ListItem
