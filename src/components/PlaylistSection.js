@@ -4,8 +4,8 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
-import './PlaylistSection.css';
 import axios from 'axios';
+import './PlaylistSection.css';
 
 function PlaylistSection() {
   const [playlists, setPlaylists] = useState([]);
@@ -30,31 +30,40 @@ function PlaylistSection() {
   });
 
   useEffect(() => {
-    const fetchSongs = async () => {
+    const fetchPlaylists = async () => {
       try {
-        const response = await axios.get('https://music-player-backend-theta.vercel.app/api/songs');
-      } catch (error) {
-        console.error('Error fetching songs:', error);
-      }
-    };
-    const fetchPlaylist = async()=>{
-      try {
-        const response = await axios.get('https://music-player-backend-theta.vercel.app/api/playlists');
-        //console.log(response.data);
+        const response = await axios.get('https://music-player-backend-theta.vercel.app/api/playlists/read');
         setPlaylists(response.data);
       } catch (error) {
-        console.error('Error fetching songs:', error);
+        console.error('Error fetching playlists:', error);
       }
     };
 
-    fetchPlaylist();
-    fetchSongs();
+    fetchPlaylists();
   }, []);
+
+  const fetchSongs = async (playlistId) => {
+    try {
+      const response = await axios.get(`https://music-player-backend-theta.vercel.app/api/songs/read?pid=${playlistId}`);
+      const updatedPlaylists = playlists.map((playlist, index) =>
+        index === selectedPlaylistIndex ? { ...playlist, songs: response.data } : playlist
+      );
+      setPlaylists(updatedPlaylists);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+    }
+  };
+
+  const handlePlaylistSelect = (index) => {
+    setSelectedPlaylistIndex(index);
+    const selectedPlaylist = playlists[index];
+    fetchSongs(selectedPlaylist._id);
+  };
 
   const addPlaylist = async () => {
     if (newPlaylistName.trim()) {
       try {
-        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/playlists', {
+        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/playlists/add', {
           name: newPlaylistName,
           description: '',
           songIds: []
@@ -76,7 +85,7 @@ function PlaylistSection() {
     if (editedPlaylistName.trim()) {
       try {
         const playlistToUpdate = playlists[editingIndex];
-        const response = await axios.put(`https://music-player-backend-theta.vercel.app/api/playlists/${playlistToUpdate._id}`, {
+        const response = await axios.put(`https://music-player-backend-theta.vercel.app/api/playlists/update/${playlistToUpdate._id}`, {
           name: editedPlaylistName,
           description: playlistToUpdate.description,
           songIds: playlistToUpdate.songs.map(song => song._id)
@@ -96,7 +105,7 @@ function PlaylistSection() {
   const deletePlaylist = async (index) => {
     const playlistToDelete = playlists[index];
     try {
-      await axios.delete(`https://music-player-backend-theta.vercel.app/api/playlists/${playlistToDelete._id}`);
+      await axios.delete(`https://music-player-backend-theta.vercel.app/api/playlists/delete/${playlistToDelete._id}`);
       const updatedPlaylists = playlists.filter((_, i) => i !== index);
       setPlaylists(updatedPlaylists);
       if (selectedPlaylistIndex === index) {
@@ -107,21 +116,23 @@ function PlaylistSection() {
     }
   };
 
-  const handlePlaylistSelect = (index) => {
-    setSelectedPlaylistIndex(index);
-  };
-
   const handleNewSongChange = (e) => {
     const { name, value } = e.target;
     setNewSong(prevState => ({ ...prevState, [name]: value }));
   };
 
+ 
   const addSong = async () => {
     if (Object.values(newSong).every(val => val.trim()) && selectedPlaylistIndex !== null) {
       try {
-        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/songs', newSong);
+        const playlistId = playlists[selectedPlaylistIndex]._id; // Get the selected playlist ID
+        const songWithPlaylist = { ...newSong, playlist_id: playlistId }; // Add playlist_id to the song object
+        
+        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/songs/add', songWithPlaylist);
+        
         const updatedPlaylists = [...playlists];
         updatedPlaylists[selectedPlaylistIndex].songs.push(response.data);
+        
         setPlaylists(updatedPlaylists);
         setNewSong({
           title: '',
@@ -130,11 +141,19 @@ function PlaylistSection() {
           duration: '',
           url: ''    
         });
+        
+        // Refresh the song list by fetching the songs again
+        fetchSongs(playlistId); 
+  
       } catch (error) {
         console.error('Error adding song:', error);
       }
     }
   };
+  
+
+
+
 
   const startEditingSong = (index) => {
     setEditingSongIndex(index);
@@ -150,7 +169,7 @@ function PlaylistSection() {
     if (Object.values(editedSong).every(val => val.trim())) {
       try {
         const songToUpdate = playlists[selectedPlaylistIndex].songs[editingSongIndex];
-        const response = await axios.put(`http://localhost:5000/api/songs/${songToUpdate._id}`, editedSong);
+        const response = await axios.put(`https://music-player-backend-theta.vercel.app/api/songs/update/${songToUpdate._id}`, editedSong);
         const updatedSongs = playlists[selectedPlaylistIndex].songs.map((song, index) =>
           index === editingSongIndex ? response.data : song
         );
@@ -175,7 +194,7 @@ function PlaylistSection() {
   const deleteSong = async (index) => {
     const songToDelete = playlists[selectedPlaylistIndex].songs[index];
     try {
-      await axios.delete(`https://music-player-backend-theta.vercel.app/api/songs/${songToDelete._id}`);
+      await axios.delete(`https://music-player-backend-theta.vercel.app/api/songs/delete/${songToDelete._id}`);
       const updatedSongs = playlists[selectedPlaylistIndex].songs.filter((_, i) => i !== index);
       const updatedPlaylists = playlists.map((playlist, index) =>
         index === selectedPlaylistIndex ? { ...playlist, songs: updatedSongs } : playlist
@@ -223,16 +242,17 @@ function PlaylistSection() {
                 <TextField
                   value={editedPlaylistName}
                   onChange={(e) => setEditedPlaylistName(e.target.value)}
+                  label="Edit playlist name"
                   variant="outlined"
                   size="small"
-                  className="edit-playlist"
+                  className="playlist-edit-input"
                 />
               ) : (
                 <ListItemText primary={playlist.name} />
               )}
               <ListItemSecondaryAction>
                 {editingIndex === index ? (
-                  <IconButton edge="end" color="primary" onClick={saveEdit}>
+                  <IconButton color="primary" onClick={saveEdit}>
                     <SaveIcon />
                   </IconButton>
                 ) : (
@@ -240,7 +260,7 @@ function PlaylistSection() {
                     <IconButton edge="end" color="primary" onClick={() => startEditing(index)}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton edge="end" color="error" onClick={() => deletePlaylist(index)}>
+                    <IconButton edge="end" color="secondary" onClick={() => deletePlaylist(index)}>
                       <DeleteIcon />
                     </IconButton>
                   </>
@@ -251,18 +271,18 @@ function PlaylistSection() {
         </List>
       </Box>
 
-      {/* Song Section */}
+      {/* Song List */}
       {selectedPlaylistIndex !== null && (
-        <Box className="song-section">
-          <Typography variant="h6" component="div" className="song-header">
-            Songs
+        <Box sx={{ marginTop: '24px' }}>
+          <Typography variant="body1">
+            Songs in "{playlists[selectedPlaylistIndex].name}":
           </Typography>
           <Box className="song-input-container">
             <TextField
               name="title"
               value={newSong.title}
               onChange={handleNewSongChange}
-              label="Title"
+              label="Song Title"
               variant="outlined"
               size="small"
               className="song-input"
@@ -277,7 +297,7 @@ function PlaylistSection() {
               className="song-input"
             />
             <TextField
-              name="album"  // Updated key
+              name="album"
               value={newSong.album}
               onChange={handleNewSongChange}
               label="Album"
@@ -295,7 +315,7 @@ function PlaylistSection() {
               className="song-input"
             />
             <TextField
-              name="url"  
+              name="url"
               value={newSong.url}
               onChange={handleNewSongChange}
               label="URL"
@@ -303,76 +323,41 @@ function PlaylistSection() {
               size="small"
               className="song-input"
             />
-            <IconButton color="primary" onClick={addSong} className="add-icon-button">
+            <IconButton color="primary" onClick={addSong}>
               <AddIcon />
             </IconButton>
           </Box>
 
-          {/* Song List */}
           <List className="song-list">
             {playlists[selectedPlaylistIndex].songs.map((song, index) => (
               <ListItem key={index} className="song-list-item">
                 {editingSongIndex === index ? (
-                  <>
-                    <TextField
-                      name="title"
-                      value={editedSong.title}
-                      onChange={handleEditedSongChange}
-                      label="Title"
-                      variant="outlined"
-                      size="small"
-                      className="edit-song"
-                    />
-                    <TextField
-                      name="artist"
-                      value={editedSong.artist}
-                      onChange={handleEditedSongChange}
-                      label="Artist"
-                      variant="outlined"
-                      size="small"
-                      className="edit-song"
-                    />
-                    <TextField
-                      name="album"  // Updated key
-                      value={editedSong.album}
-                      onChange={handleEditedSongChange}
-                      label="Album"
-                      variant="outlined"
-                      size="small"
-                      className="edit-song"
-                    />
-                    <TextField
-                      name="duration"
-                      value={editedSong.duration}
-                      onChange={handleEditedSongChange}
-                      label="Duration"
-                      variant="outlined"
-                      size="small"
-                      className="edit-song"
-                    />
-                    <TextField
-                      name="url"  
-                      value={editedSong.url}
-                      onChange={handleEditedSongChange}
-                      label="URL"
-                      variant="outlined"
-                      size="small"
-                      className="edit-song"
-                    />
-                  </>
+                  <TextField
+                    name="title"
+                    value={editedSong.title}
+                    onChange={handleEditedSongChange}
+                    label="Edit Song Title"
+                    variant="outlined"
+                    size="small"
+                    className="song-edit-input"
+                  />
                 ) : (
-                  <>
-                    <ListItemText primary={song.title} secondary={`${song.artist} - ${song.album}`} />
-                    <ListItemSecondaryAction>
-                      <IconButton edge="end" color="primary" onClick={() => startEditingSong(index)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton edge="end" color="error" onClick={() => deleteSong(index)}>
+                  <ListItemText primary={song.title} />
+                )}
+                <ListItemSecondaryAction>
+                  {editingSongIndex === index ? (
+                    <IconButton color="primary" onClick={saveEditSong}>
+                      <SaveIcon />
+                    </IconButton>
+                  ) : (
+                    <>
+                   
+                      <IconButton edge="end" color="secondary" onClick={() => deleteSong(index)}>
                         <DeleteIcon />
                       </IconButton>
-                    </ListItemSecondaryAction>
-                  </>
-                )}
+                    </>
+                  )}
+                </ListItemSecondaryAction>
               </ListItem>
             ))}
           </List>
