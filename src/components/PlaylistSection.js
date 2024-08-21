@@ -32,7 +32,7 @@ function PlaylistSection() {
   useEffect(() => {
     const fetchSongs = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/songs');
+        const response = await axios.get('https://music-player-backend-theta.vercel.app/api/songs');
       } catch (error) {
         console.error('Error fetching songs:', error);
       }
@@ -43,7 +43,7 @@ function PlaylistSection() {
   const addPlaylist = async () => {
     if (newPlaylistName.trim()) {
       try {
-        const response = await axios.post('http://localhost:5000/api/playlists', {
+        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/playlists', {
           name: newPlaylistName,
           description: '',
           songIds: []
@@ -65,7 +65,7 @@ function PlaylistSection() {
     if (editedPlaylistName.trim()) {
       try {
         const playlistToUpdate = playlists[editingIndex];
-        const response = await axios.put(`http://localhost:5000/api/playlists/${playlistToUpdate._id}`, {
+        const response = await axios.put(`https://music-player-backend-theta.vercel.app/api/playlists/${playlistToUpdate._id}`, {
           name: editedPlaylistName,
           description: playlistToUpdate.description,
           songIds: playlistToUpdate.songs.map(song => song._id)
@@ -85,7 +85,7 @@ function PlaylistSection() {
   const deletePlaylist = async (index) => {
     const playlistToDelete = playlists[index];
     try {
-      await axios.delete(`http://localhost:5000/api/playlists/${playlistToDelete._id}`);
+      await axios.delete(`https://music-player-backend-theta.vercel.app/api/playlists/${playlistToDelete._id}`);
       const updatedPlaylists = playlists.filter((_, i) => i !== index);
       setPlaylists(updatedPlaylists);
       if (selectedPlaylistIndex === index) {
@@ -108,7 +108,7 @@ function PlaylistSection() {
   const addSong = async () => {
     if (Object.values(newSong).every(val => val.trim()) && selectedPlaylistIndex !== null) {
       try {
-        const response = await axios.post('http://localhost:5000/api/songs', newSong);
+        const response = await axios.post('https://music-player-backend-theta.vercel.app/api/songs', newSong);
         const updatedPlaylists = [...playlists];
         updatedPlaylists[selectedPlaylistIndex].songs.push(response.data);
         setPlaylists(updatedPlaylists);
@@ -164,7 +164,7 @@ function PlaylistSection() {
   const deleteSong = async (index) => {
     const songToDelete = playlists[selectedPlaylistIndex].songs[index];
     try {
-      await axios.delete(`http://localhost:5000/api/songs/${songToDelete._id}`);
+      await axios.delete(`https://music-player-backend-theta.vercel.app/api/songs/${songToDelete._id}`);
       const updatedSongs = playlists[selectedPlaylistIndex].songs.filter((_, i) => i !== index);
       const updatedPlaylists = playlists.map((playlist, index) =>
         index === selectedPlaylistIndex ? { ...playlist, songs: updatedSongs } : playlist
@@ -348,9 +348,6 @@ function PlaylistSection() {
                       size="small"
                       className="edit-song"
                     />
-                    <IconButton edge="end" color="primary" onClick={saveEditSong}>
-                      <SaveIcon />
-                    </IconButton>
                   </>
                 ) : (
                   <>
